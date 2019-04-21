@@ -65,6 +65,13 @@ public class Server: MonoBehaviour
                 }
             }
         }
+
+        for(int i = 0; i < disconnectList.Count - 1; i++)
+        {
+            BroadCast(disconnectList[i].clientName + " has disconnected.", clients);
+            clients.Remove(disconnectList[i]);
+            disconnectList.RemoveAt(i);
+        }
     }
     
     private bool IsConnected(TcpClient c)
@@ -94,21 +101,43 @@ public class Server: MonoBehaviour
     private void AcceptTcpCLient(IAsyncResult ar)
     {
         TcpListener listener = (TcpListener)ar.AsyncState;
-        clients.Add(new ServerClient(listener.EndAcceptTcpClient(ar)));
 
-        //Show User Is Coneected
+        clients.Add(new ServerClient(listener.EndAcceptTcpClient(ar)));
+        StartListening();
+
+        //Show all user who is coneected.
+        BroadCast("%NAME",new List<ServerClient>() { clients[clients.Count - 1] } );
     }
     private void OnIncomingData(ServerClient c, string data)
     {
-        Debug.Log(c.clientName + " has sent the fllowing message :" + data);
-    }
-    private void BroadCast()
-    {
+        if (data.Contains("&NAME"))
+        {
+            c.clientName = data.Split('|')[1];
+            BroadCast(c.clientName + " has connected.", clients);
+            return;
+        }
 
+        BroadCast(c.clientName + " : " +data, clients);
+    }
+    private void BroadCast(string data, List<ServerClient> cl)
+    {
+        foreach (ServerClient c in cl)
+        {
+            try
+            {
+                StreamWriter writer = new StreamWriter(c.tcp.GetStream());
+                writer.WriteLine(data);
+                writer.Flush();
+            }
+            catch (Exception e)
+            {
+                Debug.Log("Write error :" + e.Message + "to Client" + c.clientName);
+            }
+        }
     }
 }
 
-public class ServerClient: MonoBehaviour
+public class ServerClient
 {
     public TcpClient tcp;
     public string clientName;

@@ -8,13 +8,18 @@ using UnityEngine.UI;
 
 public class Client : MonoBehaviour
 {
+    public GameObject chatContainer;
+    public GameObject messagePrefabs;
+
+    public string clientName;
+
     private bool socketReady;
     private TcpClient socket;
     private NetworkStream stream;
     private StreamWriter writer;
     private StreamReader reader;
 
-    public void OnConnectedToServer()
+    public void ConnectedToServer()
     {
         // if already Connected, ignore this function
         if (socketReady)
@@ -30,12 +35,12 @@ public class Client : MonoBehaviour
         string h;
         int p;
         h = GameObject.Find("Input_IP").GetComponent<InputField>().text;
-        int.TryParse(GameObject.Find("Input_Port").GetComponent<InputField>().text,out p);
+        int.TryParse(GameObject.Find("Input_Port").GetComponent<InputField>().text, out p);
         if (h != "")
         {
             host = h;
         }
-        if(p != 0)
+        if (p != 0)
         {
             port = p;
         }
@@ -52,18 +57,106 @@ public class Client : MonoBehaviour
         {
             Debug.Log("Socket error : " + e.Message);
         }
-    }
 
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        
+        if (socketReady)
+        {
+            GameObject.Find("Input_IP").GetComponent<InputField>().interactable = false;
+            GameObject.Find("Input_Port").GetComponent<InputField>().interactable = false;
+            GameObject.Find("NameInput").GetComponent<InputField>().interactable = false;
+            GameObject.Find("ConnectButton").GetComponent<Button>().interactable = false;
+            GameObject.Find("SendInput").GetComponent<InputField>().interactable = true;
+            GameObject.Find("SendButton").GetComponent<Button>().interactable = true;
+            GameObject.Find("DisconnectButton").GetComponent<Button>().interactable = true;
+        }
     }
 
     // Update is called once per frame
     void Update()
     {
-        
+        if (socketReady)
+        {
+            if (stream.DataAvailable)
+            {
+                string data = reader.ReadLine();
+                if (data != null)
+                {
+                    OnIncomingData(data);
+                }
+            }
+        }
+    }
+
+    private void OnIncomingData(string data)
+    {
+        if (data == "%NAME")
+        {
+            Send("&NAME|" + clientName);
+            return;
+        }
+
+        GameObject go = Instantiate(messagePrefabs, chatContainer.transform) as GameObject;
+        go.GetComponentInChildren<Text>().text = data;
+    }
+
+    private void Send(string data) {
+        if (!socketReady)
+            return;
+
+        writer.WriteLine(data);
+        writer.Flush();
+    }
+
+    public void OnSendButton()
+    {
+        string message = GameObject.Find("SendInput").GetComponent<InputField>().text;
+        Send(message);
+    }
+
+    private void CloseSocket()
+    {
+        if (!socketReady)
+            return;
+
+
+        writer.Close();
+        reader.Close();
+        socket.Close();
+        socketReady = false;
+        if (!socketReady)
+        {
+            GameObject.Find("Input_IP").GetComponent<InputField>().interactable = true;
+            GameObject.Find("Input_Port").GetComponent<InputField>().interactable = true;
+            GameObject.Find("NameInput").GetComponent<InputField>().interactable = true;
+            GameObject.Find("ConnectButton").GetComponent<Button>().interactable = true;
+            GameObject.Find("SendInput").GetComponent<InputField>().interactable = false;
+            GameObject.Find("SendButton").GetComponent<Button>().interactable = false;
+            GameObject.Find("DisconnectButton").GetComponent<Button>().interactable = false;
+        }
+    }
+
+    public void OnDisconnectedButton()
+    {
+        CloseSocket();
+    }
+
+    private void OnApplicationQuit()
+    {
+        CloseSocket();
+    }
+
+    private void OnDisable()
+    {
+        CloseSocket();
+    }
+
+    private void SetName(string name)
+    {
+        clientName = name;
+    }
+
+
+    public void OnNameChange()
+    {
+        SetName(GameObject.Find("NameInput").GetComponent<InputField>().text);
     }
 }
