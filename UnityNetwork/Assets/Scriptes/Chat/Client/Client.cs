@@ -19,6 +19,21 @@ public class Client : MonoBehaviour
     private StreamWriter writer;
     private StreamReader reader;
 
+
+    bool isLogin;
+
+    private GameObject nowPanel;
+    public GameObject loginPanel;
+    public GameObject registerPanel;
+    public GameObject connectPanel;
+
+    void Awake()
+    {
+        isLogin = false;
+        OnChangePanel(loginPanel);
+    }
+
+
     public void ConnectedToServer()
     {
         // if already Connected, ignore this function
@@ -158,5 +173,47 @@ public class Client : MonoBehaviour
     public void OnNameChange()
     {
         SetName(GameObject.Find("NameInput").GetComponent<InputField>().text);
+    }
+
+    public void OnSendLogin()
+    {
+        // Validate User
+
+        // if success , change to connect panel
+        isLogin = true;
+        OnChangePanel(connectPanel);
+    }
+
+    public void OnSendLogout()
+    {
+        // Logout User
+
+        // if success , change to connect panel
+        isLogin = false;
+        OnChangePanel(loginPanel);
+    }
+
+    public void OnSendRegister()
+    {
+        // Validate Whther User Is Registed
+
+
+        // if success , change to connect panel
+        isLogin = true;
+        OnChangePanel(connectPanel);
+    }
+
+    public void ChangeToRegisterPanel()
+    {
+        OnChangePanel(registerPanel);
+    }
+
+    void OnChangePanel(GameObject panel)
+    {
+        loginPanel.SetActive(false);
+        registerPanel.SetActive(false);
+        connectPanel.SetActive(false);
+        nowPanel = panel;
+        nowPanel.SetActive(true);
     }
 }
