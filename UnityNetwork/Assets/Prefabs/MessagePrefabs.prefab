@@ -93,7 +93,7 @@ GameObject:
   - component: {fileID: 4662795870334867525}
   m_Layer: 5
   m_Name: MessagePrefabs
-  m_TagString: Untagged
+  m_TagString: Message
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

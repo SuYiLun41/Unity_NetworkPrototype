@@ -27,6 +27,14 @@ public class Client : MonoBehaviour
     public GameObject registerPanel;
     public GameObject connectPanel;
 
+    public InputField login_account;
+    public InputField login_pwd;
+
+    public InputField register_account;
+    public InputField register_pwd;
+
+    public InputField connectName;
+
     void Awake()
     {
         isLogin = false;
@@ -47,10 +55,8 @@ public class Client : MonoBehaviour
         int port = 5432;
 
         // Overwrite Default value
-        string h;
-        int p;
-        h = GameObject.Find("Input_IP").GetComponent<InputField>().text;
-        int.TryParse(GameObject.Find("Input_Port").GetComponent<InputField>().text, out p);
+        string h = "";
+        int p = 0;
         if (h != "")
         {
             host = h;
@@ -72,17 +78,6 @@ public class Client : MonoBehaviour
         {
             Debug.Log("Socket error : " + e.Message);
         }
-
-        if (socketReady)
-        {
-            GameObject.Find("Input_IP").GetComponent<InputField>().interactable = false;
-            GameObject.Find("Input_Port").GetComponent<InputField>().interactable = false;
-            GameObject.Find("NameInput").GetComponent<InputField>().interactable = false;
-            GameObject.Find("ConnectButton").GetComponent<Button>().interactable = false;
-            GameObject.Find("SendInput").GetComponent<InputField>().interactable = true;
-            GameObject.Find("SendButton").GetComponent<Button>().interactable = true;
-            GameObject.Find("DisconnectButton").GetComponent<Button>().interactable = true;
-        }
     }
 
     // Update is called once per frame
@@ -103,9 +98,35 @@ public class Client : MonoBehaviour
 
     private void OnIncomingData(string data)
     {
-        if (data == "%NAME")
+        //登入處理
+        if (data == "%Login")
         {
-            Send("&NAME|" + clientName);
+            if (nowPanel == loginPanel)
+            {
+                Send("&Login|Account=" + login_account.text + "|Password=" + login_pwd.text);
+            }
+            else if (nowPanel == registerPanel)
+            {
+                Send("&Register|Account=" + register_account.text + "|Password=" + register_pwd.text);
+            }
+            return;
+        }
+
+        //登入處理(Server 回傳)
+        if (data.Contains("&Login"))
+        {
+            //登入成功
+            if (data.Split('|')[1] == "1")
+            {
+                SetName((nowPanel == loginPanel ? login_account.text : register_account.text));
+                LoginSuccess();
+                Send("&NAME|" + clientName);
+            }
+            //登入失敗
+            else if(data.Split('|')[1] == "0")
+            {
+                LoginFail();
+            }
             return;
         }
 
@@ -137,21 +158,7 @@ public class Client : MonoBehaviour
         reader.Close();
         socket.Close();
         socketReady = false;
-        if (!socketReady)
-        {
-            GameObject.Find("Input_IP").GetComponent<InputField>().interactable = true;
-            GameObject.Find("Input_Port").GetComponent<InputField>().interactable = true;
-            GameObject.Find("NameInput").GetComponent<InputField>().interactable = true;
-            GameObject.Find("ConnectButton").GetComponent<Button>().interactable = true;
-            GameObject.Find("SendInput").GetComponent<InputField>().interactable = false;
-            GameObject.Find("SendButton").GetComponent<Button>().interactable = false;
-            GameObject.Find("DisconnectButton").GetComponent<Button>().interactable = false;
-        }
-    }
-
-    public void OnDisconnectedButton()
-    {
-        CloseSocket();
+        isLogin = false;
     }
 
     private void OnApplicationQuit()
@@ -166,46 +173,74 @@ public class Client : MonoBehaviour
 
     private void SetName(string name)
     {
+        connectName.text = name;
         clientName = name;
     }
 
 
-    public void OnNameChange()
-    {
-        SetName(GameObject.Find("NameInput").GetComponent<InputField>().text);
-    }
-
     public void OnSendLogin()
     {
-        // Validate User
+        // Validate Input Empty
+        if (login_account.text == "" || login_pwd.text == "")
+        {
+            Debug.Log("Please Enter Your Account And Password");
+            return;
+        }
+       
+        ConnectedToServer();
+    }
 
+    void LoginSuccess()
+    {
         // if success , change to connect panel
+        login_account.text = "";
+        login_pwd.text = "";
+        register_account.text = "";
+        register_pwd.text = "";
+
         isLogin = true;
         OnChangePanel(connectPanel);
     }
 
+    void LoginFail()
+    {
+        login_account.text = "";
+        login_pwd.text = "";
+        register_account.text = "";
+        register_pwd.text = "";
+        // if fail , close Socket
+        CloseSocket();
+    }
+
     public void OnSendLogout()
     {
-        // Logout User
-
-        // if success , change to connect panel
-        isLogin = false;
+        // if success , change to login panel
+        CloseSocket();
         OnChangePanel(loginPanel);
     }
 
     public void OnSendRegister()
     {
-        // Validate Whther User Is Registed
+        // Validate Input Empty
+        if (register_account.text == "" || register_pwd.text == "")
+        {
+            Debug.Log("Please Enter Your Account And Password");
+            return;
+        }
 
 
         // if success , change to connect panel
-        isLogin = true;
-        OnChangePanel(connectPanel);
+        ConnectedToServer();
     }
 
     public void ChangeToRegisterPanel()
     {
         OnChangePanel(registerPanel);
+    }
+
+    public void ChangeToLoginPanel()
+    {
+        OnChangePanel(loginPanel);
     }
 
     void OnChangePanel(GameObject panel)
@@ -215,5 +250,16 @@ public class Client : MonoBehaviour
         connectPanel.SetActive(false);
         nowPanel = panel;
         nowPanel.SetActive(true);
+        if (nowPanel  == connectPanel)
+        {
+            GameObject[] messages = GameObject.FindGameObjectsWithTag("Message");
+            if(messages.Length > 0)
+            {
+                foreach(GameObject msg in messages)
+                {
+                    Destroy(msg);
+                }
+            }
+        }
     }
 }
